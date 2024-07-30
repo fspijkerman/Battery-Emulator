@@ -15,6 +15,10 @@ unsigned long ota_progress_millis = 0;
 #include "events_html.h"
 #include "index_html.cpp"
 #include "settings_html.h"
+#include "api.h"
+
+#include <LittleFS.h>
+#define FORMAT_LITTLEFS_IF_FAILED true
 
 enum WifiState {
   INIT,          //before connecting first time
@@ -44,6 +48,36 @@ void init_webserver() {
     WiFi.mode(WIFI_STA);  // Only Router connection
   }
   init_WiFi_STA(ssid.c_str(), password.c_str(), wifi_channel);
+  init_api(server);
+
+  if(!LittleFS.begin(FORMAT_LITTLEFS_IF_FAILED)) {
+#ifdef DEBUG_VIA_USB
+    Serial.println("LittleFS Mount Failed");
+#endif
+  }
+
+  // Check if index.html exists on LittleFS
+  if (!LittleFS.exists("/index.html.gz")) {
+    server.on("/new", HTTP_GET, [](AsyncWebServerRequest* request) {
+      const String filesystemNotReadyPage = R"(
+        <html>
+        <body>
+        <h1>Initial Setup: Please upload littlefs.bin</h1>
+        <ol>
+          <li>Go to the <a href="/update" target="_blank">OTA page</a></li>
+          <li>Select OTA Mode: LittleFS/SPIFFS</li>
+          <li>Select and upload the file "littlefs.bin"</li>
+        <ol>
+        </body>
+        </html>
+      )";
+      request->send(200, "text/html", filesystemNotReadyPage);
+    });
+  } else {
+    server.serveStatic("/assets/", LittleFS, "/assets/");
+    server.serveStatic("/favicon.ico", LittleFS, "/favicon.ico");
+    server.serveStatic("/new", LittleFS, "/index.html");
+  }
 
   String content = index_html;
 

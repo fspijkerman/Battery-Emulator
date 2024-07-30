@@ -138,6 +138,15 @@ void onOTAEnd(bool success);
 template <typename T>
 String formatPowerValue(String label, T value, String unit, int precision);
 
+/**
+ * @brief  Converts connection status to human readable text.
+ *
+ * @param[in] wl_status_t
+ *
+ * @return String
+ */
+String getConnectResultString(wl_status_t status);
+
 extern void storeSettings();
 
 #endif
